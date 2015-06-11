@@ -1,0 +1,23 @@
+.animation {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 600px;
+    position: relative;
+}
+
+.animation li {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: inline-block;
+    width: 290px;
+    height: 100px;
+    transition: all 0.5s;
+    transform-origin: left;
+    -webkit-transform-origin: left;
+}
+
+.animation li.animation-hidden {
+    display: none;
+}
