@@ -13,7 +13,7 @@
     display: inline-block;
     width: 290px;
     height: 100px;
-    transition: all 0.5s;
+    transition: all 0.3s;
     transform-origin: left;
     -webkit-transform-origin: left;
 }

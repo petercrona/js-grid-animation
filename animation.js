@@ -1,157 +1,218 @@
-var data = [];
-for (var i = 0; i < 750; i++) {
-    data.push({
-	name: 'Element ' + i,
-	country: 'Sweden',
-	city: 'Gothenburg'
-    });
-}
-for (var i = 0; i < 750; i++) {
-    data.push({
-	name: 'Fisk ' + i,
-	country: 'Germany',
-	city: 'Berlin'
-    });
-}
+/*
+ * Example of how to use:
+ * var container = document.getElementsByClassName('animation')[0];
+ * var tpl = container.children[0];
+ * Terrasimation.init(data, container, tpl);
+ * Terrasimation.setFilterFn(function(x) {
+ *     return x.id % 2 === 0;
+ * });
+ * Terrasimation.showMore(2);
+ *
+ * If you exchange the filterFn 0 items will be shown.
+ * I.e. if you call showMore(2) in total 2 elements will be shown. 
+ */
+var Terrasimation = {};
 
-data.sort(function() {
-    return .5 - Math.random();
-});
-
-(function(Math, data) {
+// The actual stuff
+(function(Terrasimation) {
 
     'use strict';
 
-    document.addEventListener("DOMContentLoaded", function() {
-	run(data);
-    });
+    Terrasimation.init = init;
+    Terrasimation.setFilterFn = setCondFn;
+    Terrasimation.showMore = showMore;
 
-    function run(data, container, tpl) {
-	render(data, 2);
-	setTimeout(function() {
-	    filter(data, function(x) {
-		return x.country === 'Germany';
-	    });
-	    reRender(data, 2);
-	}, 2000);
+    var data;
+    var filter;
+    var condFn;
 
-	setTimeout(function() {
-	    filter(data, function(x) {
-		return x.country === 'Sweden';
-	    });
-	    reRender(data, 2);
-	}, 6000);
+    var nrToShow = 0;
+
+    function setCondFn(_condFn) {
+        condFn = _condFn;
+        nrToShow = 0;
     }
 
-    function reRender(data, cols) {
-	var nrVisible = 0;
-	for (var i in data) {
-	    var item = data[i];
-	    if (item.visible) {
-		setTranslate3d(item, cols, nrVisible);
-		nrVisible++;
-	    }
-	}
+    function showMore(items) {
+        nrToShow += items;
+        return filter(0, nrToShow)
+    }
 
-	function fnGenerator(visible, data) {
-	    return function() {
-		setTimeout(function() {
-		    updateTransform(data);
-		}, visible * 30);
-	    };
-	}
+    function init(_data, container, tpl) {
+        var reRenderFn = render(_data, 2);
+        filter = filter.bind(null, reRenderFn);
+        data = _data;
+    }
 
-	for (var i in data) {
-	    if ( ! data[i].visible) {
-		updateTransform(data[i]);
-	    }
-	}
+    function reRender(getYFn, data, cols) {
 
-	var visible = 0;
-	for (var i in data) {
-	    if (data[i].visible) {
-		fnGenerator(visible++, data[i])();
-	    }
-	}
+        var currentYCord = document.documentElement.scrollTop || 
+        	document.body.scrollTop;
+
+        var nrVisible = 0;
+        var wasVisible = 0;
+        for (var i in data) {
+            var item = data[i];
+
+            if (item.visible) {
+	            var row = Math.floor(nrVisible/cols);
+                item.domNode.style.display = 'inline-block';
+            	item.inViewPort = getYFn(row) - currentYCord < 3000;
+                setTranslate3d(item, cols, nrVisible);
+                nrVisible++;
+            } else if (item.wasVisible) {
+                item.domNode.style.display = 'inline-block';
+                var row = Math.floor(wasVisible/cols);
+                item.inViewPort = getYFn(row) - currentYCord < 3000;
+                wasVisible++;
+            } else {
+                item.inViewPort = false;
+            }
+        }
+
+        for (var i in data) {
+            if (!data[i].inViewPort) {
+                updateTransform(data[i]);
+            }
+        }
+
+        setTimeout(function() {
+            for (var i in data) {
+                if (data[i].inViewPort) {
+                    updateTransform(data[i]);
+                }
+            }
+        }, 10);
+
+        // We optimize by hidning those not visible to prevent animation
+        // We need to show them again
+        setTimeout(function() {
+            for (var i in data) {
+                if (data[i].visible) {
+                    data[i].domNode.style.display = 'inline-block';
+                }
+            }
+        }, 400);
+    }
+
+    function getY(offsetY, height, row) {
+        return offsetY + row * height;
     }
 
     function render(data, cols) {
-	var container = document.getElementsByClassName('animation')[0];
-	var tpl = consumeElement(container.children[0]);
+        var container = document.getElementsByClassName('animation')[0];
+        var tplNode = container.children[0];
 
-	for (var i in data) {
-	    renderElement(container, tpl, cols, data[i], i);
-	}
+        var rect = tplNode.getBoundingClientRect();
+        var y0 = rect.top;
+        var h = rect.height;
+        var yCordFn = getY.bind(null, y0, h);
+
+        var tpl = consumeElement(tplNode);
+
+        for (var i in data) {
+            renderElement(container, tpl, cols, data[i], i);
+        }
+
+        return reRender.bind(null, yCordFn);
+
     }
 
     function renderElement(container, tpl, cols, item, index) {
-	var clone = tpl.cloneNode(true);
-	clone.innerHTML = item.name + ' ' + item.country + ' ' + item.city;
-	item.domNode = clone;
-	item.visible = true;
-	item.transform = {};
-	setTranslate3d(item, cols, index);
-	item.transform.scale = 'scale(1,1)';
-	updateTransform(item);
+        var clone = tpl.cloneNode(true);
+        clone.innerHTML = item.name + ' ' + item.country + ' ' + item.city;
+        item.domNode = clone;
+        item.visible = false;
+        item.wasVisible = false;
+        item.transform = {};
+        setTranslate3d(item, cols, index);
+        item.transform.scale = 'scale(0,0)';
+        item.domNode.style.display = 'none';
+        updateTransform(item);
 
-	container.appendChild(clone);
-	return clone;
+        container.appendChild(clone);
+        return clone;
     }
 
     function consumeElement(element) {
-	element.parentNode.removeChild(element);
-	return element;
+        element.parentNode.removeChild(element);
+        return element;
     }
 
     function hideElement(item) {
-	item.transform.scale = 'scale(0,1)';
-	item.visible = false;
+        item.transform.scale = 'scale(0,0)';
+        item.wasVisible = item.visible;
+        item.visible = false;
     }
 
     function showElement(item) {
-	item.transform.scale = 'scale(1,1)';
-	item.visible = true;
+        item.transform.scale = 'scale(1,1)';
+        item.visible = true;
     }
 
     function setTranslate3d(item, cols, index) {
-	var transform = getTranslate3d(cols, index);
-	item.transform.translate3d = transform;
-	return item;
+        var transform = getTranslate3d(cols, index);
+        item.transform.translate3d = transform;
+        return item;
     }
 
     function getTranslate3d(cols, index) {
-	return 'translate('+
-	    [((index % cols)*100) + '%', (Math.floor(index / cols) * 100) + '%'].join(',')+
-	    ')';
+        return 'translate(' + [((index % cols) * 100) + '%', (Math.floor(index / cols) * 100) + '%'].join(',') +
+            ')';
     }
 
-    function updateTransform(item) {
-	var element = item.domNode;
+    function updateTransform(item, inViewPort) {
+        var element = item.domNode;
 
-	if (item.visible === false) {
-	    element.style['opacity']= 0;
-	} else {
-	    element.style['opacity']= 1;
-	}
+        if (item.visible === false) {
+        	if (item.inViewPort === false) {
+            	element.style.display = 'none';
+        	}
+            element.style['opacity'] = 0;
+        } else {
+            // Prevent animation
+            if (item.inViewPort === false) {
+                element.style.display = 'none';
+            }
+            element.style['opacity'] = 1;
+        }
 
-	var transformStr = '';
-	Object.keys(item.transform).forEach(function(key) {
-	    transformStr += ' ' + item.transform[key];
-	});
-	element.style['-webkit-transform']= transformStr;
-	element.style['transform']= transformStr;
+        var transformStr = '';
+        Object.keys(item.transform).forEach(function(key) {
+            transformStr += ' ' + item.transform[key];
+        });
+        element.style['-webkit-transform'] = transformStr;
+        element.style['transform'] = transformStr;
 
-	return element;
+        return element;
     }
 
-    function filter(data, condFn) {
-	for (var i in data) {
-	    if (condFn(data[i])) {
-		showElement(data[i]);
-	    } else {
-		hideElement(data[i]);
-	    }
-	}
+    function filter(renderFn, start, amount) {
+        var end = start + amount;
+        var collectedNr = 0;
+        for (var i in data) {
+            var collect = condFn(data[i]);
+            if (collect && collectedNr >= start && collectedNr < end) {
+                showElement(data[i]);
+            } else {
+                hideElement(data[i]);
+            }
+
+            if (collect) {
+                collectedNr++;
+            }
+        }
+
+        renderFn(data, 2);
+
+        return collectedNr;
     }
 
-})(Math, data);
+})(Terrasimation);
+
+
+
+
+
+
+
