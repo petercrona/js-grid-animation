@@ -1,6 +1,6 @@
 // Data
 var data = [];
-for (var i = 0; i < 800; i++) {
+for (var i = 0; i < 750; i++) {
     data.push({
         name: 'Element ' + i,
         country: 'Sweden',
@@ -8,7 +8,7 @@ for (var i = 0; i < 800; i++) {
         id: i
     });
 }
-for (var i = 0; i < 800; i++) {
+for (var i = 0; i < 750; i++) {
     data.push({
         name: 'Fisk ' + i,
         country: 'Germany',
