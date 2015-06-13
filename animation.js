@@ -2,29 +2,31 @@
  * Example of how to use:
  * var container = document.getElementsByClassName('animation')[0];
  * var tpl = container.children[0];
- * Terrasimation.init(data, container, tpl);
- * Terrasimation.setFilterFn(function(x) {
+ * Terrassimation.init(data, container, tpl);
+ * Terrassimation.setFilterFn(function(x) {
  *     return x.id % 2 === 0;
  * });
- * Terrasimation.showMore(2);
+ * Terrassimation.showMore(2);
  *
  * If you exchange the filterFn 0 items will be shown.
- * I.e. if you call showMore(2) in total 2 elements will be shown. 
+ * I.e. if you call showMore(2) in total 2 elements will be shown.
  */
-var Terrasimation = {};
+var Terrassimation = {};
+
+if (typeof module !== 'undefined') {
+    module.exports = Terrassimation;
+}
 
 // The actual stuff
-(function(Terrasimation) {
-
-    'use strict';
-
-    Terrasimation.init = init;
-    Terrasimation.setFilterFn = setCondFn;
-    Terrasimation.showMore = showMore;
+(function(Terrassimation) {
+    Terrassimation.init = init;
+    Terrassimation.setFilterFn = setCondFn;
+    Terrassimation.showMore = showMore;
 
     var data;
-    var filter;
+    var filterWithRenderFn;
     var condFn;
+    var linkFn;
 
     var nrToShow = 0;
 
@@ -35,19 +37,20 @@ var Terrasimation = {};
 
     function showMore(items) {
         nrToShow += items;
-        return filter(0, nrToShow)
+        return filterWithRenderFn(0, nrToShow);
     }
 
-    function init(_data, container, tpl) {
-        var reRenderFn = render(_data, 2);
-        filter = filter.bind(null, reRenderFn);
+    function init(container, _data, _linkFn) {
+        linkFn = _linkFn;
+        var reRenderFn = render(container, _data, 2);
+        filterWithRenderFn = filter.bind(null, reRenderFn);
         data = _data;
     }
 
     function reRender(getYFn, data, cols) {
 
-        var currentYCord = document.documentElement.scrollTop || 
-        	document.body.scrollTop;
+        var currentYCord = document.documentElement.scrollTop ||
+            document.body.scrollTop;
 
         var nrVisible = 0;
         var wasVisible = 0;
@@ -55,9 +58,9 @@ var Terrasimation = {};
             var item = data[i];
 
             if (item.visible) {
-	            var row = Math.floor(nrVisible/cols);
+                var row = Math.floor(nrVisible/cols);
                 item.domNode.style.display = 'inline-block';
-            	item.inViewPort = getYFn(row) - currentYCord < 3000;
+                item.inViewPort = getYFn(row) - currentYCord < 3000;
                 setTranslate3d(item, cols, nrVisible);
                 nrVisible++;
             } else if (item.wasVisible) {
@@ -99,8 +102,7 @@ var Terrasimation = {};
         return offsetY + row * height;
     }
 
-    function render(data, cols) {
-        var container = document.getElementsByClassName('animation')[0];
+    function render(container, data, cols) {
         var tplNode = container.children[0];
 
         var rect = tplNode.getBoundingClientRect();
@@ -118,13 +120,23 @@ var Terrasimation = {};
 
     }
 
+    function interpolateElement(html, item) {
+        if (!item.interpolated) {
+            item.interpolated = true;
+            html = html.replace('data-src', 'src');
+            return linkFn(html, item);
+        } else {
+            return html;
+        }
+    }
+
     function renderElement(container, tpl, cols, item, index) {
         var clone = tpl.cloneNode(true);
-        clone.innerHTML = item.name + ' ' + item.country + ' ' + item.city;
         item.domNode = clone;
         item.visible = false;
         item.wasVisible = false;
         item.transform = {};
+        item.interpolated = false;
         setTranslate3d(item, cols, index);
         item.transform.scale = 'scale(0,0)';
         item.domNode.style.display = 'none';
@@ -147,6 +159,7 @@ var Terrasimation = {};
 
     function showElement(item) {
         item.transform.scale = 'scale(1,1)';
+        item.domNode.innerHTML = interpolateElement(item.domNode.innerHTML, item);
         item.visible = true;
     }
 
@@ -157,7 +170,8 @@ var Terrasimation = {};
     }
 
     function getTranslate3d(cols, index) {
-        return 'translate(' + [((index % cols) * 100) + '%', (Math.floor(index / cols) * 100) + '%'].join(',') +
+        return 'translate3d(' + [((index % cols) * 110) + '%',
+                (Math.floor(index / cols) * 110) + '%', 0].join(',') +
             ')';
     }
 
@@ -165,9 +179,9 @@ var Terrasimation = {};
         var element = item.domNode;
 
         if (item.visible === false) {
-        	if (item.inViewPort === false) {
-            	element.style.display = 'none';
-        	}
+            if (item.inViewPort === false) {
+                element.style.display = 'none';
+            }
             element.style['opacity'] = 0;
         } else {
             // Prevent animation
@@ -204,15 +218,7 @@ var Terrasimation = {};
         }
 
         renderFn(data, 2);
-
         return collectedNr;
     }
 
-})(Terrasimation);
-
-
-
-
-
-
-
+})(Terrassimation);

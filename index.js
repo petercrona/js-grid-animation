@@ -1,6 +1,6 @@
 // Data
 var data = [];
-for (var i = 0; i < 800; i++) {
+for (var i = 0; i < 40000; i++) {
     data.push({
         name: 'Element ' + i,
         country: 'Sweden',
@@ -8,7 +8,7 @@ for (var i = 0; i < 800; i++) {
         id: i
     });
 }
-for (var i = 0; i < 800; i++) {
+for (var i = 0; i < 40000; i++) {
     data.push({
         name: 'Fisk ' + i,
         country: 'Germany',
@@ -22,19 +22,22 @@ data.sort(function() {
 
 var container = document.getElementsByClassName('animation')[0];
 var tpl = container.children[0];
-Terrasimation.init(data, container, tpl);
-Terrasimation.setFilterFn(function(x) {
+var linkFn = function(html, item) {
+    return html;
+};
+Terrassimation.init(container, data, linkFn);
+Terrassimation.setFilterFn(function(x) {
     return x.id % 2 === 0;
 });
-Terrasimation.showMore(5);
+Terrassimation.showMore(5);
 
 setTimeout(function() {
-    Terrasimation.showMore(500);
+    Terrassimation.showMore(500);
 }, 2000);
 
 setTimeout(function() {
-    Terrasimation.setFilterFn(function(x) {
+    Terrassimation.setFilterFn(function(x) {
         return x.id % 3 === 0;
     });
-    Terrasimation.showMore(5);
+    Terrassimation.showMore(5);
 }, 6000);
